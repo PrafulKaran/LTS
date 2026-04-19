@@ -11,6 +11,7 @@ export const SignupPage = () => {
   const navigate = useNavigate()
   const { signup } = useAuth()
   const [formData, setFormData] = useState({
+    username: '',
     firstName: '',
     lastName: '',
     email: '',
@@ -24,7 +25,7 @@ export const SignupPage = () => {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
@@ -38,12 +39,39 @@ export const SignupPage = () => {
       return
     }
 
-    // Mock signup
-    signup(
-      { firstName: formData.firstName, lastName: formData.lastName, email: formData.email },
-      'fake-token'
-    )
-    navigate('/discovery')
+    try {
+      // Call backend API to register
+      const response = await fetch('http://localhost:8000/users/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        setError(error.detail || 'Signup failed')
+        return
+      }
+
+      const userData = await response.json()
+      
+      // Store user data and navigate
+      signup(
+        { firstName: formData.firstName, lastName: formData.lastName, email: formData.email },
+        'user-token'
+      )
+      navigate('/discovery')
+    } catch (err) {
+      setError(err.message || 'An error occurred during signup')
+    }
   }
 
   return (
@@ -69,6 +97,16 @@ export const SignupPage = () => {
             {/* Form */}
             <form onSubmit={handleSubmit}>
               <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Username"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    placeholder="Choose a unique username"
+                  />
+                </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
