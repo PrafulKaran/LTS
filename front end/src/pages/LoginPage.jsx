@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { toast } from 'sonner'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 
 const MotionBox = motion(Box)
@@ -12,21 +13,65 @@ export const LoginPage = () => {
   const { login } = useAuth()
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setLoading(true)
+
     if (!formData.email || !formData.password) {
-      setError('Please fill all fields')
+      toast.error('Please fill all fields')
+      setLoading(false)
       return
     }
-    // Mock login
-    login({ firstName: 'John', lastName: 'Doe', email: formData.email }, 'fake-token')
-    navigate('/discovery')
+
+    const toastId = toast.loading('Logging in...')
+
+    try {
+      const response = await fetch('http://localhost:8000/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        toast.error(errorData.detail || 'Login failed', { id: toastId })
+        setLoading(false)
+        return
+      }
+
+      const userData = await response.json()
+      
+      // Store user data and navigate
+      login(
+        {
+          id: userData.id,
+          firstName: userData.first_name,
+          lastName: userData.last_name,
+          email: userData.email,
+          username: userData.username,
+          profilePicture: userData.profile_picture,
+        },
+        'user-token'
+      )
+      toast.success('Login successful!', { id: toastId })
+      setLoading(false)
+      navigate('/discovery')
+    } catch (err) {
+      toast.error(err.message || 'An error occurred during login', { id: toastId })
+      setLoading(false)
+    }
   }
 
   return (
@@ -67,8 +112,23 @@ export const LoginPage = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                sx={{ mb: 2 }}
+                sx={{ mb: 1 }}
               />
+
+              {/* Forgot Password Link */}
+              <Box sx={{ textAlign: 'right', mb: 2 }}>
+                <Link
+                  href="/forgot-password"
+                  sx={{
+                    color: '#FF6B6B',
+                    textDecoration: 'none',
+                    fontSize: '0.875rem',
+                    '&:hover': { textDecoration: 'underline' },
+                  }}
+                >
+                  Forgot password?
+                </Link>
+              </Box>
 
               {error && (
                 <Typography variant="body2" sx={{ color: '#E63946', mb: 2 }}>
@@ -81,13 +141,14 @@ export const LoginPage = () => {
                 fullWidth
                 variant="contained"
                 size="large"
+                disabled={loading}
                 sx={{
                   background: 'linear-gradient(135deg, #FF6B6B 0%, #E63946 100%)',
                   py: 1.5,
                   mb: 2,
                 }}
               >
-                Login
+                {loading ? 'Logging in...' : 'Login'}
               </Button>
             </form>
 

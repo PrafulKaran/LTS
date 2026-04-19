@@ -1,9 +1,11 @@
-import { Box, Container, Paper, TextField, Button, Typography, Link, Grid } from '@mui/material'
+import { Box, Container, Paper, TextField, Button, Typography, Link, Grid, Avatar } from '@mui/material'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { toast } from 'sonner'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
+import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 
 const MotionBox = motion(Box)
 
@@ -17,27 +19,54 @@ export const SignupPage = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    profilePicture: null,
   })
+  const [previewImage, setPreviewImage] = useState(null)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size must be less than 5MB')
+        return
+      }
+
+      // Read file as base64
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, profilePicture: reader.result }))
+        setPreviewImage(reader.result)
+        toast.success('Image selected successfully')
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
+    setLoading(true)
 
-    if (Object.values(formData).some((v) => !v)) {
-      setError('Please fill all fields')
+    if (!formData.username || !formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
+      toast.error('Please fill all fields')
+      setLoading(false)
       return
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
+      toast.error('Passwords do not match')
+      setLoading(false)
       return
     }
+
+    const toastId = toast.loading('Creating account...')
 
     try {
       // Call backend API to register
@@ -52,12 +81,14 @@ export const SignupPage = () => {
           password: formData.password,
           first_name: formData.firstName,
           last_name: formData.lastName,
+          profile_picture: formData.profilePicture,
         }),
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        setError(error.detail || 'Signup failed')
+        const errorData = await response.json()
+        toast.error(errorData.detail || 'Signup failed', { id: toastId })
+        setLoading(false)
         return
       }
 
@@ -65,12 +96,22 @@ export const SignupPage = () => {
       
       // Store user data and navigate
       signup(
-        { firstName: formData.firstName, lastName: formData.lastName, email: formData.email },
+        {
+          id: userData.id,
+          firstName: userData.first_name,
+          lastName: userData.last_name,
+          email: userData.email,
+          username: userData.username,
+          profilePicture: userData.profile_picture,
+        },
         'user-token'
       )
+      toast.success('Account created successfully!', { id: toastId })
+      setLoading(false)
       navigate('/discovery')
     } catch (err) {
-      setError(err.message || 'An error occurred during signup')
+      toast.error(err.message || 'An error occurred during signup', { id: toastId })
+      setLoading(false)
     }
   }
 
@@ -155,6 +196,35 @@ export const SignupPage = () => {
                     onChange={handleChange}
                   />
                 </Grid>
+
+                {/* Profile Picture Upload */}
+                <Grid item xs={12}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Profile Picture (Optional)
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {previewImage && (
+                      <Avatar
+                        src={previewImage}
+                        sx={{ width: 80, height: 80 }}
+                      />
+                    )}
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Upload Photo
+                      <input
+                        hidden
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                      />
+                    </Button>
+                  </Box>
+                </Grid>
               </Grid>
 
               {error && (
@@ -168,6 +238,7 @@ export const SignupPage = () => {
                 fullWidth
                 variant="contained"
                 size="large"
+                disabled={loading}
                 sx={{
                   background: 'linear-gradient(135deg, #FF6B6B 0%, #E63946 100%)',
                   py: 1.5,
@@ -175,7 +246,7 @@ export const SignupPage = () => {
                   mb: 2,
                 }}
               >
-                Sign Up
+                {loading ? 'Creating Account...' : 'Sign Up'}
               </Button>
             </form>
 

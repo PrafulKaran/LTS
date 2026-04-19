@@ -9,6 +9,7 @@ class UserCreate(BaseModel):
     password: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    profile_picture: Optional[str] = None
 
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None

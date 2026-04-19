@@ -1,6 +1,7 @@
 import { ThemeProvider, CssBaseline, Box } from '@mui/material'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { Toaster } from 'sonner'
 import theme from './styles/theme'
 
 // Components
@@ -11,6 +12,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { DiscoveryPage } from './pages/DiscoveryPage'
 import { MatchesPage } from './pages/MatchesPage'
 import { ChatPage } from './pages/ChatPage'
@@ -24,6 +26,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <Toaster position="top-right" theme="light" />
       <AuthProvider>
         <Router>
           <Box className="app-container">
@@ -33,6 +36,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
               {/* Protected Routes */}
               <Route

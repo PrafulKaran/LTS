@@ -1,7 +1,7 @@
 import { AppBar, Toolbar, Button, Box, Avatar, Menu, MenuItem } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getInitials } from '../utils/helpers'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 
@@ -9,6 +9,31 @@ export const Navbar = () => {
   const navigate = useNavigate()
   const { user, logout, isAuthenticated } = useAuth()
   const [anchorEl, setAnchorEl] = useState(null)
+  const [profilePicture, setProfilePicture] = useState(null)
+
+  useEffect(() => {
+    // Fetch user profile picture from backend
+    const fetchProfilePicture = async () => {
+      try {
+        if (user?.id) {
+          const response = await fetch(`http://localhost:8000/users/${user.id}`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.profile_picture) {
+              // Construct image URL from filename
+              setProfilePicture(`http://localhost:8000/uploads/profile_pictures/${data.profile_picture}`)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching profile picture:', error)
+      }
+    }
+
+    if (isAuthenticated) {
+      fetchProfilePicture()
+    }
+  }, [user?.id, isAuthenticated])
 
   const handleMenuOpen = (e) => setAnchorEl(e.currentTarget)
   const handleMenuClose = () => setAnchorEl(null)
@@ -77,8 +102,9 @@ export const Navbar = () => {
               Chat
             </Button>
 
-            {/* User Avatar Menu */}
+            {/* User Avatar Menu - Show profile picture or initials */}
             <Avatar
+              src={profilePicture}
               onClick={handleMenuOpen}
               sx={{
                 cursor: 'pointer',
@@ -88,7 +114,7 @@ export const Navbar = () => {
                 '&:hover': { opacity: 0.8 },
               }}
             >
-              {getInitials(user?.firstName + ' ' + user?.lastName)}
+              {!profilePicture && getInitials(user?.firstName + ' ' + user?.lastName)}
             </Avatar>
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
               <MenuItem onClick={() => navigateTo('/profile')}>My Profile</MenuItem>
